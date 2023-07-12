@@ -104,8 +104,11 @@ class ByteCoverDataset(Dataset):
         
         fpath = os.path.join(self.dataset_path, str(ord(yt_id[0])), f"{yt_id}.{self.file_ext}") 
 
-        with h5py.File(fpath, 'r') as f:
-            audio_feature = f["cqt_20"][:]
+        try:
+            with h5py.File(fpath, 'r') as f:
+                audio_feature = f["cqt_20"][:]
+        except FileNotFoundError:
+            audio_feature = np.zeros((1, 84, 1000))
         return torch.from_numpy(audio_feature)
         
     def _read_audio(self, track_id: str) -> torch.Tensor:
