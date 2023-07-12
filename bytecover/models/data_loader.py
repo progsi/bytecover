@@ -7,14 +7,14 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, IterableDataset
 from torchvision import transforms
 
 from bytecover.models.data_model import BatchDict
 from bytecover.utils import bcolors
 
 
-class ByteCoverDataset(Dataset):
+class ByteCoverDataset(IterableDataset):
     def __init__(
         self,
         data_path: str,
@@ -35,34 +35,31 @@ class ByteCoverDataset(Dataset):
         self.target_sr = target_sr
         self.max_len = max_len
         self._load_data()
-        # self.pipeline = transforms.Compose([self._read_audio, self._pad_or_trim_audio])
         self.pipeline = transforms.Compose([self._read_cqt_20, self._pad_or_trim_audio])
 
-        
-    def __len__(self) -> int:
-        return len(self.track_ids)
+    def __iter__(self):
+        for index in range(len(self.track_ids)):
+            track_id = self.track_ids[index]
+            anchor_audio = self.pipeline(track_id)
 
-    def __getitem__(self, index: int) -> BatchDict:
-        track_id = self.track_ids[index]
-        anchor_audio = self.pipeline(track_id)
+            clique_id, pos_id, neg_id = self._triplet_sampling(track_id)
 
-        clique_id, pos_id, neg_id = self._triplet_sampling(track_id)
-
-        if self.data_split == "TRAIN":
-            positive_audio = self.pipeline(pos_id)
-            negative_audio = self.pipeline(neg_id)
-        else:
-            positive_audio = torch.empty(0)
-            negative_audio = torch.empty(0)
-        return dict(
-            anchor_id=track_id,
-            anchor=anchor_audio,
-            anchor_label=torch.tensor(clique_id, dtype=torch.float),
-            positive_id=pos_id,
-            positive=positive_audio,
-            negative_id=neg_id,
-            negative=negative_audio,
-        )
+            if self.data_split == "TRAIN":
+                positive_audio = self.pipeline(pos_id)
+                negative_audio = self.pipeline(neg_id)
+            else:
+                positive_audio = torch.empty(0)
+                negative_audio = torch.empty(0)
+            
+            yield dict(
+                anchor_id=track_id,
+                anchor=anchor_audio,
+                anchor_label=torch.tensor(clique_id, dtype=torch.float),
+                positive_id=pos_id,
+                positive=positive_audio,
+                negative_id=neg_id,
+                negative=negative_audio,
+            )
 
     def _triplet_sampling(self, track_id: str) -> Tuple[int, str, str]:
         clique_id = self.labels.loc[track_id, "clique"]
@@ -99,9 +96,7 @@ class ByteCoverDataset(Dataset):
         self.versions.set_index("clique", inplace=True)
 
     def _read_cqt_20(self, track_id: str) -> torch.Tensor:
-        
         yt_id = self.dataset_df.loc[self.dataset_df.id == track_id,'Video ID'].iloc[0]
-        
         fpath = os.path.join(self.dataset_path, str(ord(yt_id[0])), f"{yt_id}.{self.file_ext}") 
 
         try:
@@ -164,6 +159,6 @@ def bytecover_dataloader(
         ByteCoverDataset(data_path, file_ext, dataset_path, data_split, debug, target_sr=target_sr, max_len=max_len),
         batch_size=batch_size if max_len > 0 else 1,
         num_workers=config["num_workers"],
-        shuffle=config["shuffle"],
+        # shuffle=config["shuffle"],
         drop_last=config["drop_last"],
     )

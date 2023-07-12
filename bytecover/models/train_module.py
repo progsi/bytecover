@@ -124,7 +124,7 @@ class TrainModule:
             pbar_loaders.set_postfix_str(f"max_seq_len={self.max_len}")
             for step, batch in tqdm(
                 enumerate(t_loader),
-                total=len(t_loader),
+                # total=len(t_loader),
                 disable=(not self.config["progress_bar"]),
                 position=2,
                 leave=False,
