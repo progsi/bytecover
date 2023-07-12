@@ -2,7 +2,7 @@ data_path: data
 file_extension: h5
 dataset_path: ../data/audio_features/
 save_model_path: models
-debug: True
+debug: False
 progress_bar: True
 device: cuda:0
 num_channels: 1
