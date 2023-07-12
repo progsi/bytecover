@@ -21,6 +21,7 @@ torchaudio = "^2.0.1"
 torchvision = "^0.15.1"
 tqdm = "^4.65.0"
 wandb = "^0.14.0"
+h5py = "^3.5.0"  # Add this line for h5py
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"

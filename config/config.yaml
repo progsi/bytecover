@@ -1,6 +1,6 @@
 data_path: data
-file_extension: mp3
-dataset_path: /data/shs100k
+file_extension: h5
+dataset_path: ../data/audio_features/
 save_model_path: models
 debug: True
 progress_bar: True
@@ -12,7 +12,10 @@ train:
   mixed_precision: True
   target_sr: 22050
   compress_ratio: 20
-  max_seq_len: [100, 150, 200]
+  # max_seq_len: [100, 150, 200]
+  # Here we adjust the values to the unit of CQT features
+  # which are downsampled with a factor of 20 at the time dimension
+  max_seq_len: [4400, 6600, 8800]
   num_classes: 10000
   triplet_margin: 0.3
   smooth_factor: 0.1

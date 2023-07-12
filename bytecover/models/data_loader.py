@@ -1,6 +1,7 @@
 import os
 from typing import Dict, Literal, Tuple
 
+import h5py
 import ffmpeg
 import numpy as np
 import pandas as pd
@@ -29,12 +30,15 @@ class ByteCoverDataset(Dataset):
         self.file_ext = file_ext
         self.dataset_path = dataset_path
         self.data_split = data_split
+        self.dataset_df = pd.read_csv("data/interim/shs100k.csv")
         self.debug = debug
         self.target_sr = target_sr
         self.max_len = max_len
         self._load_data()
-        self.pipeline = transforms.Compose([self._read_audio, self._pad_or_trim_audio])
+        # self.pipeline = transforms.Compose([self._read_audio, self._pad_or_trim_audio])
+        self.pipeline = transforms.Compose([self._read_cqt_20, self._pad_or_trim_audio])
 
+        
     def __len__(self) -> int:
         return len(self.track_ids)
 
@@ -94,6 +98,16 @@ class ByteCoverDataset(Dataset):
         self.versions["clique"] = self.versions["clique"].map(lambda x: mapping[x])
         self.versions.set_index("clique", inplace=True)
 
+    def _read_cqt_20(self, track_id: str) -> torch.Tensor:
+        
+        yt_id = self.dataset_df.loc[self.dataset_df.id == track_id,'Video ID'].iloc[0]
+        
+        fpath = os.path.join(self.dataset_path, str(ord(yt_id[0])), f"{yt_id}.{self.file_ext}") 
+
+        with h5py.File(fpath, 'r') as f:
+            audio_feature = f["cqt_20"][:]
+        return torch.from_numpy(audio_feature)
+        
     def _read_audio(self, track_id: str) -> torch.Tensor:
         if self.debug:
             seq_len = np.random.randint(10, 200) if self.max_len <= 0 else self.max_len

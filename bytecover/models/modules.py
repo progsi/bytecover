@@ -117,15 +117,6 @@ class Resnet50(nn.Module):
         super(Resnet50, self).__init__()
         self.in_channels = 64
 
-        self.cqt = nnAudio.CQT2010v2(
-            sr=sr,
-            hop_length=hop_lenght,
-            n_bins=n_bins,
-            bins_per_octave=bins_per_octave,
-            window=window,
-            output_format="Complex",
-            verbose=False,
-        )
         self.compress = nn.AvgPool2d((1, compress_ratio))
         self.time_strech = T.TimeStretch(n_freq=n_bins)
         self.tempo_factors = tempo_factors
@@ -167,9 +158,6 @@ class Resnet50(nn.Module):
 
     def forward(self, x: torch.Tensor):
 
-        x = self.cqt(x)
-        # Time-strech requires complex tensors, that's why cqt function returns complex
-        x = torch.view_as_complex(x)
         if self.tempo_factors is not None:
             rate = abs(self.tempo_factors[1] - self.tempo_factors[0]) * torch.rand(1).item() + min(self.tempo_factors)
             strech = (
