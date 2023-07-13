@@ -1,5 +1,6 @@
 import os
 from typing import Dict, Literal, Tuple
+import math
 
 import h5py
 import ffmpeg
@@ -7,7 +8,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, IterableDataset
+from torch.utils.data import DataLoader, IterableDataset, get_worker_info
 from torchvision import transforms
 
 from bytecover.models.data_model import BatchDict
@@ -35,10 +36,26 @@ class ByteCoverDataset(IterableDataset):
         self.target_sr = target_sr
         self.max_len = max_len
         self._load_data()
-        self.pipeline = transforms.Compose([self._read_cqt_20, self._pad_or_trim_audio])
+        self.pipeline = transforms.Compose([self._read_cqt_20, self._pad_or_trim_audio_cqt])
 
+    def __handle_workers(self):
+        worker_info = get_worker_info()
+        if worker_info is None:
+            # Single-process data loading
+            start = 0
+            end = len(self.dataset_df)
+        else:
+            # Multi-process data loading
+            per_worker = int(math.ceil(len(self.dataset_df) / float(worker_info.num_workers)))
+            worker_id = worker_info.id
+            start = worker_id * per_worker
+            end = min(start + per_worker, len(self.dataset_df))
+        return start, end
+    
     def __iter__(self):
-        for index in range(len(self.track_ids)):
+        start, end = self.__handle_workers()
+
+        for index in range(start, end):
             track_id = self.track_ids[index]
             anchor_audio = self.pipeline(track_id)
 
@@ -103,7 +120,7 @@ class ByteCoverDataset(IterableDataset):
             with h5py.File(fpath, 'r') as f:
                 audio_feature = f["cqt_20"][:]
         except FileNotFoundError:
-            audio_feature = np.zeros((1, 84, 1000))
+            audio_feature = np.zeros((84, 300))
         return torch.from_numpy(audio_feature)
         
     def _read_audio(self, track_id: str) -> torch.Tensor:
@@ -143,6 +160,18 @@ class ByteCoverDataset(IterableDataset):
 
         return audio[offset : (offset + self.max_len * self.target_sr)]
 
+    def _pad_or_trim_audio_cqt(self, audio: torch.Tensor) -> torch.Tensor:
+                
+        if self.max_len <= 0:
+            return audio
+
+        if (self.data_split == "TRAIN") and (audio.shape[-1] <= self.max_len):
+            return F.pad(audio, (0, self.max_len - audio.shape[-1]))
+
+        max_offset = audio.shape[-1] - self.max_len
+        offset = np.random.randint(max_offset) if max_offset > 0 else 0
+
+        return audio[:, offset:(offset + self.max_len)]
 
 def bytecover_dataloader(
     data_path: str,

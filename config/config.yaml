@@ -15,7 +15,8 @@ train:
   # max_seq_len: [100, 150, 200]
   # Here we adjust the values to the unit of CQT features
   # which are downsampled with a factor of 20 at the time dimension
-  max_seq_len: [4400, 6600, 8800]
+  max_seq_len: [215, 323, 430]
+  # max_seq_len: [4400, 6600, 8800]
   num_classes: 10000
   triplet_margin: 0.3
   smooth_factor: 0.1

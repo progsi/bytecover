@@ -1,4 +1,5 @@
 import wandb
+import traceback
 
 from bytecover.models.train_module import TrainModule
 from bytecover.utils import initialize_logging, load_config
@@ -12,6 +13,10 @@ if config["wandb"]:
         # track hyperparameters and run metadata
         config=config["train"],
     )
-trainer = TrainModule(config)
+try:
+    trainer = TrainModule(config)
+except Exception as e:
+    traceback.print_stack()
+    traceback.print_exc()
 trainer.pipeline()
 trainer.test()

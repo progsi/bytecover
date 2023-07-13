@@ -147,3 +147,4 @@ wandb/
 
 # Output folders
 output*
+python.lprof

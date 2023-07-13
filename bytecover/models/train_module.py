@@ -23,7 +23,6 @@ from bytecover.models.utils import (
 
 logger: logging.Logger = logging.getLogger()  # The logger used to log output
 
-
 class TrainModule:
     def __init__(self, config: Dict) -> None:
         self.config = config
